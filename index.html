@@ -1,140 +1,555 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<!--
+  ╔══════════════════════════════════════════════════════════════════╗
+  ║         PICKLEBALL COURT TV  v2  — GitHub Pages Web App         ║
+  ╠══════════════════════════════════════════════════════════════════╣
+  ║  UPLOAD BOTH FILES TO GITHUB REPO (same folder):                ║
+  ║    index.html       ← this file                                 ║
+  ║    background.jpg   ← the paddle photo you provided             ║
+  ╠══════════════════════════════════════════════════════════════════╣
+  ║  WHAT'S NEW IN V2:                                              ║
+  ║  • background.jpg used across all screens                       ║
+  ║  • Music plays ONLY at the 5-min warning                        ║
+  ║  • Countdown timer shows ONLY at the 5-min warning              ║
+  ║  • Horizontal (16:9) TV layout                                  ║
+  ║  • Greeting + active screens show customer name & 1200-1400     ║
+  ╠══════════════════════════════════════════════════════════════════╣
+  ║  SEEDING EXISTING BOOKINGS (today → mid June):                  ║
+  ║  In JSONBin, paste your existing bookings manually once:        ║
+  ║  {                                                               ║
+  ║    "sessions": [                                                 ║
+  ║      { "start":"2026-05-07T10:00:00",                          ║
+  ║        "end":"2026-05-07T12:00:00", "name":"John D." },        ║
+  ║      { "start":"2026-05-07T14:00:00",                          ║
+  ║        "end":"2026-05-07T15:00:00", "name":"Sarah T." }        ║
+  ║      ...                                                         ║
+  ║    ]                                                             ║
+  ║  }                                                               ║
+  ║  The Zap auto-appends all NEW Wix bookings going forward.       ║
+  ╠══════════════════════════════════════════════════════════════════╣
+  ║  ZAPIER (1 Zap, 4 steps) — see code snippet at bottom of file  ║
+  ╚══════════════════════════════════════════════════════════════════╝
+-->
   <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="30">
-  <title>TV Display</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Lato:wght@300;400&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Matchbox Pickleball</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    :root {
+      --orange: #E8531F;
+      --blue:   #7AAEC8;
+      --white:  #F5F0EC;
+      --card:   rgba(0,0,0,0.52);
+      --border: rgba(255,255,255,0.13);
+      --muted:  rgba(255,255,255,0.48);
+      --green:  #7BE56B;
     }
-
+    * { margin:0; padding:0; box-sizing:border-box; }
     body {
-      width: 100vw;
-      height: 100vh;
-      background-image: url('background.jpg');
-      background-size: cover;
-      background-position: center;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
+      width:100vw; height:100vh;
+      overflow:hidden; cursor:none;
+      font-family:'DM Sans',sans-serif;
+      color:var(--white);
+      background:#120908;
     }
 
-    /* Dark overlay for readability */
-    body::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.45);
+    /* Background */
+    .bg {
+      position:fixed; inset:0;
+      background:url('./background.jpg') center center / cover no-repeat;
+      z-index:0;
+    }
+    .bg-overlay {
+      position:fixed; inset:0;
+      background:linear-gradient(135deg,rgba(12,6,3,0.80) 0%,rgba(8,10,16,0.75) 100%);
+      z-index:1;
     }
 
-    .message-box {
-      position: relative;
-      z-index: 1;
-      background: rgba(255, 255, 255, 0.08);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 24px;
-      padding: 60px 90px;
-      text-align: center;
-      max-width: 85vw;
-      box-shadow: 0 8px 60px rgba(0, 0, 0, 0.5);
-      animation: fadeIn 1.2s ease forwards;
+    /* Top bar */
+    .top-bar {
+      position:fixed; top:0; left:0; right:0;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:16px 52px;
+      border-bottom:1px solid var(--border);
+      background:rgba(0,0,0,0.42);
+      backdrop-filter:blur(14px);
+      z-index:30;
+    }
+    .court-id {
+      font-family:'Bebas Neue',sans-serif;
+      font-size:26px; letter-spacing:5px;
+      color:var(--orange);
+    }
+    .top-mid { display:flex; align-items:center; gap:10px; }
+    .sdot {
+      width:8px; height:8px; border-radius:50%;
+      background:var(--muted); flex-shrink:0;
+    }
+    .sdot.on   { background:var(--green); animation:blink 2s infinite; }
+    .sdot.warn { background:var(--orange); animation:blink 0.5s infinite; }
+    .slabel {
+      font-size:11px; letter-spacing:4px;
+      text-transform:uppercase; color:var(--muted);
+    }
+    .clock {
+      font-family:'Bebas Neue',sans-serif;
+      font-size:58px; letter-spacing:3px;
+      color:var(--white); min-width:90px; text-align:right;
+      line-height:1;
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to   { opacity: 1; transform: translateY(0); }
+    /* Bottom bar */
+    .bottom-bar {
+      position:fixed; bottom:0; left:0; right:0;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:13px 52px;
+      border-top:1px solid var(--border);
+      background:rgba(0,0,0,0.42);
+      backdrop-filter:blur(14px);
+      z-index:30;
+    }
+    .bottom-bar span {
+      font-size:11px; letter-spacing:3px;
+      text-transform:uppercase; color:var(--muted);
+    }
+    .bottom-bar .hi { color:var(--white); letter-spacing:2px; }
+
+    /* Screens */
+    .screen {
+      position:fixed; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      opacity:0; pointer-events:none;
+      transition:opacity 0.85s ease;
+      z-index:10;
+    }
+    .screen.active { opacity:1; pointer-events:all; }
+    .inner {
+      width:100%; padding:0 60px;
+      display:flex; align-items:center;
+      gap:0;
+      /* offset for bars */
+      margin-top:0;
     }
 
-    .message-label {
-      font-family: 'Lato', sans-serif;
-      font-weight: 300;
-      font-size: 22px;
-      color: rgba(255, 255, 255, 0.65);
-      letter-spacing: 4px;
-      text-transform: uppercase;
-      margin-bottom: 20px;
+    /* ── GREETING ── */
+    .g-left { flex:1.1; }
+    .g-eyebrow {
+      font-size:12px; letter-spacing:5px;
+      text-transform:uppercase; color:var(--muted);
+      margin-bottom:14px;
+    }
+    .g-title {
+      font-family:'Bebas Neue',sans-serif;
+      font-size:clamp(64px,8vw,112px);
+      letter-spacing:4px; line-height:1;
+      margin-bottom:18px;
+    }
+    .g-title .acc { color:var(--orange); }
+    .g-tagline {
+      font-size:17px; font-weight:300;
+      font-style:italic; color:var(--muted);
+    }
+    .g-divider {
+      width:1px; height:200px; flex-shrink:0;
+      background:var(--border); margin:0 56px;
+    }
+    .g-right { flex:1; }
+    .g-right-lbl {
+      font-size:11px; letter-spacing:5px;
+      text-transform:uppercase; color:var(--muted);
+      margin-bottom:16px;
+    }
+    #session-list { display:flex; flex-direction:column; gap:10px; }
+    .srow {
+      display:flex; align-items:center; justify-content:space-between;
+      background:var(--card); border:1px solid var(--border);
+      border-radius:10px; padding:14px 22px;
+      backdrop-filter:blur(8px);
+    }
+    .srow.now {
+      border-color:var(--orange);
+      background:rgba(232,83,31,0.14);
+    }
+    .srow .sname { font-size:17px; font-weight:500; }
+    .srow .stime {
+      font-family:'Bebas Neue',sans-serif;
+      font-size:22px; letter-spacing:2px;
+      color:var(--muted);
+    }
+    .srow.now .stime { color:var(--orange); }
+    .srow .snow-badge {
+      font-size:10px; letter-spacing:3px;
+      text-transform:uppercase;
+      padding:4px 10px; border-radius:4px;
+      background:var(--orange); color:#fff;
+      font-weight:500;
+    }
+    .no-sess { font-size:16px; font-weight:300; font-style:italic; color:var(--muted); }
+
+    /* ── ACTIVE ── */
+    .a-wrap { text-align:center; }
+    .a-badge {
+      display:inline-block;
+      font-size:11px; letter-spacing:5px;
+      text-transform:uppercase;
+      color:var(--green);
+      border:1px solid rgba(123,229,107,0.35);
+      padding:6px 18px; border-radius:4px;
+      background:rgba(123,229,107,0.08);
+      margin-bottom:28px;
+    }
+    .a-name {
+      font-family:'Bebas Neue',sans-serif;
+      font-size:clamp(60px,9vw,120px);
+      letter-spacing:4px; line-height:1;
+      margin-bottom:16px;
+    }
+    .a-time {
+      font-family:'Bebas Neue',sans-serif;
+      font-size:clamp(34px,4.5vw,60px);
+      letter-spacing:6px; color:var(--orange);
+    }
+    .a-enjoy {
+      font-size:16px; font-weight:300;
+      font-style:italic; color:var(--muted);
+      margin-top:18px;
     }
 
-    .message-text {
-      font-family: 'Playfair Display', serif;
-      font-size: 72px;
-      color: #ffffff;
-      line-height: 1.25;
-      text-shadow: 0 2px 20px rgba(0, 0, 0, 0.6);
+    /* ── WARNING ── */
+    .w-left { flex:1; text-align:right; }
+    .w-badge {
+      display:inline-block;
+      background:var(--orange); color:#fff;
+      font-size:11px; letter-spacing:5px;
+      text-transform:uppercase;
+      padding:7px 18px; border-radius:4px;
+      margin-bottom:22px;
+      animation:flash 0.8s ease-in-out infinite;
+    }
+    .w-title {
+      font-family:'Bebas Neue',sans-serif;
+      font-size:clamp(48px,6.5vw,88px);
+      letter-spacing:3px; line-height:1.05;
+      margin-bottom:14px;
+    }
+    .w-info {
+      font-size:19px; font-weight:300; color:var(--muted);
+    }
+    .w-info strong { color:var(--white); font-weight:500; }
+    .w-music {
+      display:flex; align-items:center; gap:10px;
+      justify-content:flex-end; margin-top:16px;
+    }
+    .mwaves { display:flex; gap:3px; align-items:flex-end; height:16px; }
+    .mwaves span {
+      width:3px; border-radius:2px;
+      background:var(--orange);
+      animation:wave 0.7s ease-in-out infinite;
+    }
+    .mwaves span:nth-child(1){ height:6px;  animation-delay:0s; }
+    .mwaves span:nth-child(2){ height:13px; animation-delay:.12s; }
+    .mwaves span:nth-child(3){ height:8px;  animation-delay:.24s; }
+    .mwaves span:nth-child(4){ height:11px; animation-delay:.08s; }
+    .mwaves span:nth-child(5){ height:5px;  animation-delay:.2s; }
+    .mlabel {
+      font-size:11px; letter-spacing:3px;
+      text-transform:uppercase; color:var(--muted);
+    }
+    .w-divider {
+      width:1px; height:240px; flex-shrink:0;
+      background:rgba(232,83,31,0.28); margin:0 64px;
+    }
+    .w-right { flex:1; }
+    .w-right-lbl {
+      font-size:11px; letter-spacing:5px;
+      text-transform:uppercase; color:rgba(232,83,31,0.75);
+      margin-bottom:8px;
+    }
+    .w-count {
+      font-family:'Bebas Neue',sans-serif;
+      font-size:clamp(100px,16vw,180px);
+      letter-spacing:6px; line-height:1;
+      color:var(--orange);
+      animation:cpulse 1s ease-in-out infinite;
+    }
+    .w-end {
+      font-size:15px; font-weight:300;
+      color:var(--muted); letter-spacing:1px;
+      margin-top:8px;
     }
 
-    .divider {
-      width: 60px;
-      height: 2px;
-      background: rgba(255, 255, 255, 0.4);
-      margin: 28px auto;
-      border-radius: 2px;
-    }
-
-    .status {
-      font-family: 'Lato', sans-serif;
-      font-size: 16px;
-      color: rgba(255, 255, 255, 0.35);
-      letter-spacing: 2px;
-      margin-top: 28px;
-    }
-
-    /* Pulse dot to show live status */
-    .live-dot {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      background: #4ade80;
-      border-radius: 50%;
-      margin-right: 8px;
-      vertical-align: middle;
-      animation: pulse 2s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50%       { opacity: 0.4; transform: scale(0.8); }
-    }
+    @keyframes blink  { 0%,100%{opacity:1} 50%{opacity:.2} }
+    @keyframes flash  { 0%,100%{opacity:1} 50%{opacity:.5} }
+    @keyframes cpulse { 0%,100%{transform:scale(1)} 50%{transform:scale(.97)} }
+    @keyframes wave   { 0%,100%{transform:scaleY(1)} 50%{transform:scaleY(.3)} }
   </style>
 </head>
 <body>
-  <div class="message-box">
-    <div class="message-label">Message</div>
-    <div class="divider"></div>
-    <div class="message-text" id="msg">Loading...</div>
-    <div class="status"><span class="live-dot"></span>Live Display</div>
+
+<div class="bg"></div>
+<div class="bg-overlay"></div>
+
+<!-- Top bar -->
+<div class="top-bar">
+  <div class="court-id">Matchbox Pickleball</div>
+  <div class="top-mid">
+    <div class="sdot" id="sdot"></div>
+    <span class="slabel" id="slabel">Ready</span>
   </div>
+  <div class="clock" id="clock">00:00</div>
+</div>
 
-  <script>
-    const SHEET_ID = "15Zw1mm015BATINEOy8rvu1Glevwja65JvjPHD2pqpTw";
+<!-- GREETING -->
+<div class="screen active" id="screen-greeting">
+  <div class="inner">
+    <div class="g-left">
+      <div class="g-eyebrow">Welcome to</div>
+      <div class="g-title" id="g-title">MATCHBOX<br><span class="acc">PICKLEBALL</span></div>
+      <div class="g-tagline" id="g-tagline">Have a great game</div>
+    </div>
+    <div class="g-divider"></div>
+    <div class="g-right">
+      <div class="g-right-lbl">Today's sessions</div>
+      <div id="session-list">
+        <div class="no-sess" id="no-sess">No sessions scheduled</div>
+      </div>
+    </div>
+  </div>
+</div>
 
-    function loadMessage() {
-      const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet1&cachebust=${Date.now()}`;
+<!-- ACTIVE -->
+<div class="screen" id="screen-active">
+  <div class="inner" style="justify-content:center;">
+    <div class="a-wrap">
+      <div class="a-badge">Session in progress</div>
+      <div class="a-name" id="a-name">—</div>
+      <div class="a-time" id="a-time">—</div>
+      <div class="a-enjoy">Enjoy your game!</div>
+    </div>
+  </div>
+</div>
 
-      fetch(url)
-        .then(res => res.text())
-        .then(text => {
-          const json = JSON.parse(text.substr(47).slice(0, -2));
-          const message = json.table.rows[1].c[0].v;
-          document.getElementById("msg").innerText = message;
-        })
-        .catch(() => {
-          document.getElementById("msg").innerText = "Welcome!";
-        });
-    }
+<!-- WARNING -->
+<div class="screen" id="screen-warning">
+  <div class="inner">
+    <div class="w-left">
+      <div class="w-badge">⚠ Time check</div>
+      <div class="w-title">Session ending<br>in 5 minutes</div>
+      <div class="w-info" id="w-info">Please wrap up</div>
+      <div class="w-music">
+        <span class="mlabel">Alert playing</span>
+        <div class="mwaves"><span></span><span></span><span></span><span></span><span></span></div>
+      </div>
+    </div>
+    <div class="w-divider"></div>
+    <div class="w-right">
+      <div class="w-right-lbl">Time remaining</div>
+      <div class="w-count" id="w-count">05:00</div>
+      <div class="w-end" id="w-end">Session ends at —</div>
+    </div>
+  </div>
+</div>
 
-    // Load immediately on page open
-    loadMessage();
+<!-- Bottom bar -->
+<div class="bottom-bar">
+  <span id="date-bar">—</span>
+  <span class="hi" id="b-next">—</span>
+  <span id="b-club">Matchbox Pickleball</span>
+</div>
 
-    // Then refresh message every 30 seconds
-    setInterval(loadMessage, 30000);
-  </script>
+<!-- Alert audio (5-min warning only) -->
+<audio id="warn-audio" loop>
+  <source src="" type="audio/mpeg">
+  <!-- Set WARN_MUSIC_URL in CONFIG below, or leave "" for beep only -->
+</audio>
+
+<script>
+/* ══ CONFIG ════════════════════════════════════════════ */
+const C = {
+  CLUB_NAME:       "Matchbox Pickleball",
+  TAGLINE:         "Have a great game",
+  JSONBIN_BIN_ID:  "69fbf4d2adc21f119a64af0d",
+  JSONBIN_API_KEY: "$2a$10$m1dUyhPxgduHzvGQ5v4ePOgsF.m3FqTSyBgWJ.QRAStlzaJ1bEyau",
+  WARN_MUSIC_URL:  "",          // mp3 URL, plays only at 5-min warning
+  POLL_MS:         60_000,      // re-fetch every 60 s
+  WARN_SECS:       300,         // 5 minutes
+};
+/* ═══════════════════════════════════════════════════════ */
+
+/* Apply config */
+document.getElementById('b-club').textContent = C.CLUB_NAME;
+if (C.WARN_MUSIC_URL) document.querySelector('#warn-audio source').src = C.WARN_MUSIC_URL;
+
+/* Clock */
+function tick_clock() {
+  const n = new Date();
+  document.getElementById('clock').textContent =
+    n.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false});
+  document.getElementById('date-bar').textContent =
+    n.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+}
+setInterval(tick_clock, 1000); tick_clock();
+
+/* Helpers */
+function pd(s){ return new Date(s); }
+function hhmm(d){ return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}).replace(':',''); }
+function disp(d){ return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}); }
+function msToMS(ms){
+  if(ms<=0) return '00:00';
+  const s=Math.floor(ms/1000), m=Math.floor(s/60), sec=s%60;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+/* Audio */
+let actx=null;
+const warnAudio=document.getElementById('warn-audio');
+function beep(){
+  if(!actx) actx=new(window.AudioContext||window.webkitAudioContext)();
+  if(actx.state==='suspended') actx.resume();
+  [0,700,1400].forEach(d=>{
+    const o=actx.createOscillator(), g=actx.createGain();
+    o.connect(g); g.connect(actx.destination);
+    o.frequency.value=880;
+    const t=actx.currentTime+d/1000;
+    g.gain.setValueAtTime(0.45,t);
+    g.gain.exponentialRampToValueAtTime(0.001,t+0.45);
+    o.start(t); o.stop(t+0.5);
+  });
+}
+function startWarn(){ beep(); if(C.WARN_MUSIC_URL) warnAudio.play().catch(()=>{}); }
+function stopWarn() { warnAudio.pause(); warnAudio.currentTime=0; }
+document.addEventListener('click',()=>{ if(!actx) actx=new(window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended') actx.resume(); },{once:true});
+
+/* State */
+let sessions=[], cur='greeting', warnFired=false;
+
+function showScreen(name){
+  if(cur===name) return; cur=name;
+  ['greeting','active','warning'].forEach(s=>
+    document.getElementById(`screen-${s}`).classList.toggle('active',s===name));
+  const dot=document.getElementById('sdot'), lbl=document.getElementById('slabel');
+  dot.className='sdot';
+  if(name==='active'){ dot.classList.add('on'); lbl.textContent='In session'; stopWarn(); }
+  else if(name==='warning'){ dot.classList.add('warn'); lbl.textContent='Ending soon'; }
+  else { lbl.textContent='Ready'; stopWarn(); }
+}
+
+/* Build greeting list */
+function buildList(){
+  const list=document.getElementById('session-list');
+  const noMsg=document.getElementById('no-sess');
+  const now=new Date();
+  const today=sessions.filter(s=>{
+    const st=pd(s.start), en=pd(s.end);
+    return st.toDateString()===now.toDateString() && en>new Date(+now-3600000);
+  });
+  list.querySelectorAll('.srow').forEach(e=>e.remove());
+  if(!today.length){ noMsg.style.display='block'; document.getElementById('b-next').textContent='No more sessions today'; return; }
+  noMsg.style.display='none';
+  today.slice(0,4).forEach(s=>{
+    const st=pd(s.start), en=pd(s.end);
+    const isNow=now>=st&&now<=en, isPast=now>en;
+    const row=document.createElement('div');
+    row.className='srow'+(isNow?' now':'');
+    row.style.opacity=isPast?'0.38':'1';
+    row.innerHTML=`<span class="sname">${s.name||'Booking'}</span>`+
+      `<span class="stime">${hhmm(st)} – ${hhmm(en)}</span>`+
+      (isNow?'<span class="snow-badge">Now</span>':'');
+    list.appendChild(row);
+  });
+  const nxt=today.find(s=>pd(s.end)>now);
+  if(nxt){
+    const st=pd(nxt.start), en=pd(nxt.end), isNow=now>=st&&now<=en;
+    document.getElementById('b-next').textContent=isNow
+      ?`Ongoing · ends ${disp(en)}`
+      :`Next: ${nxt.name?nxt.name+' · ':''}${hhmm(st)} – ${hhmm(en)}`;
+  }
+}
+
+/* Main tick (every second) */
+function tick(){
+  const now=new Date();
+  const active=sessions.find(s=>now>=pd(s.start)&&now<=pd(s.end));
+  if(!active){
+    warnFired=false; showScreen('greeting'); buildList(); return;
+  }
+  const st=pd(active.start), en=pd(active.end);
+  const msLeft=en-now;
+  document.getElementById('b-next').textContent=`Ends: ${disp(en)}`;
+
+  if(msLeft<=C.WARN_SECS*1000){
+    if(!warnFired){ warnFired=true; startWarn(); }
+    showScreen('warning');
+    document.getElementById('w-count').textContent=msToMS(msLeft);
+    document.getElementById('w-end').textContent=`Session ends at ${disp(en)}`;
+    document.getElementById('w-info').innerHTML=
+      (active.name?`<strong>${active.name}</strong> · `:'')+'Please wrap up and clear the court';
+  } else {
+    warnFired=false; showScreen('active');
+    document.getElementById('a-name').textContent=active.name||'Welcome!';
+    document.getElementById('a-time').textContent=`${hhmm(st)} – ${hhmm(en)}`;
+  }
+}
+
+/* Fetch JSONBin */
+async function fetchSessions(){
+  if(!C.JSONBIN_BIN_ID||C.JSONBIN_BIN_ID==='YOUR_BIN_ID_HERE'){
+    const now=Date.now();
+    sessions=[{start:new Date(now-20*60000).toISOString(),end:new Date(now+43*60000).toISOString(),name:'Alex Chen'},
+              {start:new Date(now+80*60000).toISOString(),end:new Date(now+140*60000).toISOString(),name:'Sam Rivera'}];
+    return;
+  }
+  try{
+    const r=await fetch(`https://api.jsonbin.io/v3/b/${C.JSONBIN_BIN_ID}/latest`,
+      {headers:{'X-Master-Key':C.JSONBIN_API_KEY}});
+    const d=await r.json();
+    sessions=(d?.record?.sessions||[])
+      .filter(s=>pd(s.end)>new Date(Date.now()-7200000))
+      .sort((a,b)=>pd(a.start)-pd(b.start));
+  }catch(e){console.warn('JSONBin:',e);}
+}
+
+async function init(){ await fetchSessions(); tick(); setInterval(tick,1000); setInterval(fetchSessions,C.POLL_MS); }
+init();
+</script>
+
+<!--
+═══════════════════════════════════════════════════════════
+  ZAPIER — Step 3 Code (paste into "Code by Zapier"):
+
+  Map these input variables:
+    inputData.rawBin       ← body text from GET step
+    inputData.startTime    ← booking start (ISO) from Wix
+    inputData.endTime      ← booking end (ISO) from Wix
+    inputData.customer     ← customer full name from Wix
+
+  Code:
+  ───────────────────────────────────────────────────────
+  const parsed = JSON.parse(inputData.rawBin || '{}');
+  const sessions = parsed.record?.sessions || parsed.sessions || [];
+
+  sessions.push({
+    start: inputData.startTime,
+    end:   inputData.endTime,
+    name:  inputData.customer
+  });
+
+  // Clean up sessions older than 2 hours
+  const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  const cleaned = sessions.filter(s => s.end > cutoff);
+
+  output = [{ body: JSON.stringify({ sessions: cleaned }) }];
+  ───────────────────────────────────────────────────────
+  Step 4 — Webhooks PUT:
+    URL:           https://api.jsonbin.io/v3/b/YOUR_BIN_ID
+    Payload type:  Raw
+    Body:          use "body" from step 3
+    Headers:       X-Master-Key → your key
+                   Content-Type → application/json
+═══════════════════════════════════════════════════════════
+-->
 </body>
 </html>
