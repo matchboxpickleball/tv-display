@@ -373,7 +373,7 @@ const C = {
   TAGLINE:         "Have a great game",
   JSONBIN_BIN_ID:  "69fbf4d2adc21f119a64af0d",
   JSONBIN_API_KEY: "$2a$10$m1dUyhPxgduHzvGQ5v4ePOgsF.m3FqTSyBgWJ.QRAStlzaJ1bEyau",
-  WARN_MUSIC_URL:  "",          // mp3 URL, plays only at 5-min warning
+  WARN_MUSIC_URL:  "./music.mp3", // mp3 URL, plays only at 5-min warning
   POLL_MS:         60_000,      // re-fetch every 60 s
   WARN_SECS:       300,         // 5 minutes
 };
@@ -395,6 +395,7 @@ setInterval(tick_clock, 1000); tick_clock();
 
 /* Helpers */
 function pd(s){ return new Date(s); }
+function firstName(n){ return (n||'').trim().split(/\s+/)[0]; }
 function hhmm(d){ return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}).replace(':',''); }
 function disp(d){ return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}); }
 function msToMS(ms){
@@ -455,7 +456,7 @@ function buildList(){
     const row=document.createElement('div');
     row.className='srow'+(isNow?' now':'');
     row.style.opacity=isPast?'0.38':'1';
-    row.innerHTML=`<span class="sname">${s.name||'Booking'}</span>`+
+    row.innerHTML=`<span class="sname">${firstName(s.name)}</span>`+
       `<span class="stime">${hhmm(st)} – ${hhmm(en)}</span>`+
       (isNow?'<span class="snow-badge">Now</span>':'');
     list.appendChild(row);
@@ -465,7 +466,7 @@ function buildList(){
     const st=pd(nxt.start), en=pd(nxt.end), isNow=now>=st&&now<=en;
     document.getElementById('b-next').textContent=isNow
       ?`Ongoing · ends ${disp(en)}`
-      :`Next: ${nxt.name?nxt.name+' · ':''}${hhmm(st)} – ${hhmm(en)}`;
+      :`Next: ${nxt.name?firstName(nxt.name)+' · ':''}${hhmm(st)} – ${hhmm(en)}`;
   }
 }
 
@@ -486,10 +487,10 @@ function tick(){
     document.getElementById('w-count').textContent=msToMS(msLeft);
     document.getElementById('w-end').textContent=`Session ends at ${disp(en)}`;
     document.getElementById('w-info').innerHTML=
-      (active.name?`<strong>${active.name}</strong> · `:'')+'Please wrap up and clear the court';
+      (active.name?`<strong>${firstName(active.name)}</strong> · `:'')+'Please wrap up and clear the court';
   } else {
     warnFired=false; showScreen('active');
-    document.getElementById('a-name').textContent=active.name||'Welcome!';
+    document.getElementById('a-name').textContent=firstName(active.name)||'Welcome!';
     document.getElementById('a-time').textContent=`${hhmm(st)} – ${hhmm(en)}`;
   }
 }
