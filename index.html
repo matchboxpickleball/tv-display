@@ -394,7 +394,11 @@ function tick_clock() {
 setInterval(tick_clock, 1000); tick_clock();
 
 /* Helpers */
-function pd(s){ return new Date(s); }
+function pd(s){
+  // Strip timezone offset (e.g. +08:00 from Wix) so times display as local court time
+  const clean = (s||'').replace(/(\.\d+)?([+-]\d{2}:\d{2}|Z)$/, '');
+  return new Date(clean);
+}
 function firstName(n){ return (n||'').trim().split(/\s+/)[0]; }
 function hhmm(d){ return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}).replace(':',''); }
 function disp(d){ return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}); }
@@ -495,6 +499,22 @@ function tick(){
   }
 }
 
+/* Merge consecutive same-name sessions — fixes race condition from simultaneous Wix bookings */
+function mergeConsecutive(list){
+  const merged=[];
+  for(const s of list){
+    if(merged.length>0){
+      const last=merged[merged.length-1];
+      const sameName=last.name.toLowerCase()===s.name.toLowerCase();
+      const sameDay=pd(last.start).toDateString()===pd(s.start).toDateString();
+      const contiguous=pd(last.end).getTime()===pd(s.start).getTime();
+      if(sameName&&sameDay&&contiguous){ last.end=s.end; continue; }
+    }
+    merged.push({name:s.name,start:s.start,end:s.end});
+  }
+  return merged;
+}
+
 /* Fetch JSONBin */
 async function fetchSessions(){
   if(!C.JSONBIN_BIN_ID||C.JSONBIN_BIN_ID==='YOUR_BIN_ID_HERE'){
@@ -507,9 +527,10 @@ async function fetchSessions(){
     const r=await fetch(`https://api.jsonbin.io/v3/b/${C.JSONBIN_BIN_ID}/latest`,
       {headers:{'X-Master-Key':C.JSONBIN_API_KEY}});
     const d=await r.json();
-    sessions=(d?.record?.sessions||[])
+    const raw=(d?.record?.sessions||[])
       .filter(s=>pd(s.end)>new Date(Date.now()-7200000))
       .sort((a,b)=>pd(a.start)-pd(b.start));
+    sessions=mergeConsecutive(raw);
   }catch(e){console.warn('JSONBin:',e);}
 }
 
