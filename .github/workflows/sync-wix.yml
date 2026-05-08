@@ -1,0 +1,147 @@
+name: Sync Wix Bookings
+
+on:
+  schedule:
+    # Runs every 10 minutes
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+    # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Fetch bookings from Wix and generate sessions.json
+        run: |
+          node << 'SCRIPT'
+          const https = require('https');
+
+          const WIX_API_KEY = process.env.WIX_API_KEY;
+          const WIX_SITE_ID = process.env.WIX_SITE_ID;
+
+          function fetchPage(offset) {
+            return new Promise((resolve, reject) => {
+              const body = JSON.stringify({
+                query: { paging: { limit: 100, offset: offset || 0 } }
+              });
+              const options = {
+                hostname: 'www.wixapis.com',
+                path: '/bookings/v2/bookings/query',
+                method: 'POST',
+                headers: {
+                  'Authorization': WIX_API_KEY,
+                  'wix-site-id': WIX_SITE_ID,
+                  'Content-Type': 'application/json',
+                  'Content-Length': Buffer.byteLength(body)
+                }
+              };
+              const req = https.request(options, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => {
+                  if (res.statusCode !== 200) {
+                    reject(new Error(`Wix API returned ${res.statusCode}: ${data}`));
+                    return;
+                  }
+                  resolve(JSON.parse(data));
+                });
+              });
+              req.on('error', reject);
+              req.write(body);
+              req.end();
+            });
+          }
+
+          async function fetchAll() {
+            let all = [];
+            let offset = 0;
+            let hasNext = true;
+            while (hasNext) {
+              const data = await fetchPage(offset);
+              const bookings = data.bookings || [];
+              all = all.concat(bookings);
+              hasNext = data.pagingMetadata?.hasNext || false;
+              offset += bookings.length;
+              if (offset > 1000) break;
+            }
+            return all;
+          }
+
+          function cleanDate(d) {
+            return (d || '').replace(/(\.\d+)?([+-]\d{2}:\d{2}|Z)$/, '');
+          }
+
+          async function main() {
+            const bookings = await fetchAll();
+            console.log(`Fetched ${bookings.length} total bookings from Wix`);
+
+            // Filter: only CONFIRMED or CREATED, and from today onwards
+            const now = new Date();
+            const cutoff = new Date(now);
+            cutoff.setHours(0, 0, 0, 0);
+            cutoff.setTime(cutoff.getTime() - 3600000); // 1 hour before today
+
+            let sessions = bookings
+              .filter(b => b.status === 'CONFIRMED' || b.status === 'CREATED')
+              .map(b => {
+                const slot = b.bookedEntity?.slot || {};
+                const contact = b.contactDetails || {};
+                return {
+                  name: (contact.firstName || 'Guest').trim(),
+                  start: cleanDate(slot.startDate || ''),
+                  end: cleanDate(slot.endDate || '')
+                };
+              })
+              .filter(s => s.start && s.end)
+              .filter(s => new Date(s.end) > cutoff);
+
+            // Sort by start time
+            sessions.sort((a, b) => new Date(a.start) - new Date(b.start));
+
+            // Merge consecutive same-name sessions
+            const merged = [];
+            for (const s of sessions) {
+              if (merged.length > 0) {
+                const last = merged[merged.length - 1];
+                const sameName = (last.name || '').toLowerCase().trim() === (s.name || '').toLowerCase().trim();
+                const sameDay = new Date(last.start).toDateString() === new Date(s.start).toDateString();
+                const gap = new Date(s.start).getTime() - new Date(last.end).getTime();
+                const contiguous = gap >= -60000 && gap <= 300000;
+                if (sameName && sameDay && contiguous) {
+                  if (new Date(s.end) > new Date(last.end)) last.end = s.end;
+                  continue;
+                }
+              }
+              merged.push({ name: s.name, start: s.start, end: s.end });
+            }
+
+            console.log(`Output: ${merged.length} sessions (after merge)`);
+
+            const fs = require('fs');
+            fs.writeFileSync('sessions.json', JSON.stringify({ sessions: merged }, null, 2));
+            console.log('Written to sessions.json');
+          }
+
+          main().catch(e => { console.error(e); process.exit(1); });
+          SCRIPT
+        env:
+          WIX_API_KEY: ${{ secrets.WIX_API_KEY }}
+          WIX_SITE_ID: ${{ secrets.WIX_SITE_ID }}
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add sessions.json
+          if git diff --staged --quiet; then
+            echo "No changes to sessions.json"
+          else
+            git commit -m "Auto-sync sessions from Wix [skip ci]"
+            git push
+          fi
