@@ -3,21 +3,18 @@
 <head>
 <!--
   ╔══════════════════════════════════════════════════════════════════╗
-  ║    MATCHBOX PICKLEBALL TV — v3 (Direct Wix API)                 ║
+  ║    MATCHBOX PICKLEBALL TV — v4 (GitHub Actions + Wix API)       ║
   ╠══════════════════════════════════════════════════════════════════╣
-  ║  ZERO ZAPS NEEDED — TV fetches bookings directly from Wix.     ║
-  ║  Handles: multi-hour bookings, cancellations, reschedules.     ║
-  ║  All automatic. No JSONBin. No Zapier.                          ║
+  ║  HOW IT WORKS:                                                  ║
+  ║  • GitHub Actions calls Wix API every 10 min (server-side)     ║
+  ║  • Generates sessions.json in this repo                         ║
+  ║  • This page fetches sessions.json every 60 seconds             ║
+  ║  • No Zapier. No JSONBin. No CORS issues. Fully automatic.     ║
   ╠══════════════════════════════════════════════════════════════════╣
   ║  SETUP:                                                         ║
-  ║  1. Fill in WIX_API_KEY and WIX_SITE_ID in CONFIG below        ║
-  ║  2. Upload index.html + background.jpg + music.mp3 to GitHub   ║
-  ║  3. Enable GitHub Pages → open URL on TV → press F11           ║
-  ╠══════════════════════════════════════════════════════════════════╣
-  ║  FILES TO UPLOAD (same folder):                                 ║
-  ║    index.html        ← this file                                ║
-  ║    background.jpg    ← the paddle photo                         ║
-  ║    music.mp3         ← 5-min warning music (optional)           ║
+  ║  1. Add WIX_API_KEY and WIX_SITE_ID as GitHub Secrets          ║
+  ║  2. Upload this file + workflow to repo                         ║
+  ║  3. Open GitHub Pages URL on TV → tap once → done              ║
   ╚══════════════════════════════════════════════════════════════════╝
 -->
   <meta charset="UTF-8">
@@ -44,7 +41,6 @@
       background:#120908;
     }
 
-    /* Background */
     .bg {
       position:fixed; inset:0;
       background:url('./background.jpg') center center / cover no-repeat;
@@ -56,7 +52,6 @@
       z-index:1;
     }
 
-    /* Top bar */
     .top-bar {
       position:fixed; top:0; left:0; right:0;
       display:flex; align-items:center; justify-content:space-between;
@@ -89,7 +84,6 @@
       line-height:1;
     }
 
-    /* Bottom bar */
     .bottom-bar {
       position:fixed; bottom:0; left:0; right:0;
       display:flex; align-items:center; justify-content:space-between;
@@ -105,7 +99,6 @@
     }
     .bottom-bar .hi { color:var(--white); letter-spacing:2px; }
 
-    /* Screens */
     .screen {
       position:fixed; inset:0;
       display:flex; align-items:center; justify-content:center;
@@ -117,11 +110,9 @@
     .inner {
       width:100%; padding:0 60px;
       display:flex; align-items:center;
-      gap:0;
-      margin-top:0;
+      gap:0; margin-top:0;
     }
 
-    /* ── GREETING ── */
     .g-left { flex:1.1; }
     .g-eyebrow {
       font-size:12px; letter-spacing:5px;
@@ -176,7 +167,6 @@
     }
     .no-sess { font-size:16px; font-weight:300; font-style:italic; color:var(--muted); }
 
-    /* ── ACTIVE ── */
     .a-wrap { text-align:center; }
     .a-badge {
       display:inline-block;
@@ -205,7 +195,6 @@
       margin-top:18px;
     }
 
-    /* ── WARNING ── */
     .w-left { flex:1; text-align:right; }
     .w-badge {
       display:inline-block;
@@ -279,7 +268,6 @@
 <div class="bg"></div>
 <div class="bg-overlay"></div>
 
-<!-- Top bar -->
 <div class="top-bar">
   <div class="court-id">Matchbox Pickleball</div>
   <div class="top-mid">
@@ -289,7 +277,6 @@
   <div class="clock" id="clock">00:00</div>
 </div>
 
-<!-- GREETING -->
 <div class="screen active" id="screen-greeting">
   <div class="inner">
     <div class="g-left">
@@ -307,7 +294,6 @@
   </div>
 </div>
 
-<!-- ACTIVE -->
 <div class="screen" id="screen-active">
   <div class="inner" style="justify-content:center;">
     <div class="a-wrap">
@@ -319,7 +305,6 @@
   </div>
 </div>
 
-<!-- WARNING -->
 <div class="screen" id="screen-warning">
   <div class="inner">
     <div class="w-left">
@@ -340,19 +325,17 @@
   </div>
 </div>
 
-<!-- Bottom bar -->
 <div class="bottom-bar">
   <span id="date-bar">—</span>
   <span class="hi" id="b-next">—</span>
   <span>Matchbox Pickleball</span>
 </div>
 
-<!-- Alert audio (5-min warning only) -->
 <audio id="warn-audio" loop preload="auto">
   <source src="./music.mp3" type="audio/mpeg">
 </audio>
 
-<!-- Audio unlock overlay — tap once on TV startup, then audio works forever -->
+<!-- Tap once to unlock audio on TV -->
 <div id="audio-unlock" style="
   position:fixed; inset:0; z-index:999;
   background:rgba(0,0,0,0.92);
@@ -369,19 +352,8 @@
 </div>
 
 <script>
-/* ══════════════════════════════════════════════════════════
-   ▸ CONFIG — fill in your Wix API key below
-══════════════════════════════════════════════════════════ */
-const C = {
-  // Wix API — get from manage.wix.com → Settings → API Keys
-  WIX_API_KEY:  "IST.eyJraWQiOiJQb3pIX2FDMiIsImFsZyI6IlJTMjU2In0.eyJkYXRhIjoie1wiaWRcIjpcIjY4N2U0NTIyLTk0ZTYtNDU4Mi1hYWY2LTJjMjAzZjM0MDdlN1wiLFwiaWRlbnRpdHlcIjp7XCJ0eXBlXCI6XCJhcHBsaWNhdGlvblwiLFwiaWRcIjpcImI4ODg5MTQ5LTZmN2ItNDNkMi04ODljLTBkZmQ4YzczZWI1NVwifSxcInRlbmFudFwiOntcInR5cGVcIjpcImFjY291bnRcIixcImlkXCI6XCJhNDI3YzAxYi1jOTc2LTQ1ZWUtODYxOS1hYTUxNzI4Mjk4YTFcIn19IiwiaWF0IjoxNzc4MjA0MDIwfQ.K1Zrb1b9ehWgqkKf3WIZw3lguBiGM9eKPHhUaD1pDg4SIOZdvLizWHttoJMST7874BxV13gFbfoFjLqwU1flOvvaVDjqoQKU-uZ5vSl_sg2Y12X1PFZYKOeFzy_hWeLbUfVv0Js46OvHmWk-xI7b-J3epYeReJpAw8YEwSdtoYyKnpxp1HM6zB8aSeFPykM1BogF2TG3SA1-6t_9AApIfho7Bi5AXB3Iia1PRZ0Cyo9M6vuojSpbQIOjpwq84isqj0aZ0VjLFWLsmqB7lwhd6TMIfN5Ie_eCp1_Q00qi4ATJ3-PJII6LLIezpLPOfXOh6KxFK3TOY_JhIrX2QJivgg",
-  WIX_SITE_ID:  "e5638fbb-63f8-43aa-9779-f5ce6b168eb1",
-
-  WARN_MUSIC_URL: "./music.mp3",
-  POLL_MS:        60_000,   // re-fetch from Wix every 60s
-  WARN_SECS:      300,      // 5-min warning
-};
-/* ══════════════════════════════════════════════════════════ */
+const POLL_MS   = 60_000;
+const WARN_SECS = 300;
 
 /* ── Clock ─────────────────────────────────────────────── */
 function tickClock() {
@@ -395,7 +367,6 @@ setInterval(tickClock, 1000); tickClock();
 
 /* ── Helpers ───────────────────────────────────────────── */
 function pd(s) {
-  // Strip timezone offset so times display as local court time
   const clean = (s||'').replace(/(\.\d+)?([+-]\d{2}:\d{2}|Z)$/, '');
   return new Date(clean);
 }
@@ -424,40 +395,35 @@ function beep() {
     o.start(t); o.stop(t+0.5);
   });
 }
-function startWarn() { beep(); if (C.WARN_MUSIC_URL) { warnAudio.currentTime=0; warnAudio.play().catch(e=>console.warn('Audio play failed:',e)); } }
+function startWarn() { beep(); warnAudio.currentTime=0; warnAudio.play().catch(e=>console.warn('Audio:',e)); }
 function stopWarn()  { warnAudio.pause(); warnAudio.currentTime=0; }
 
-// Audio unlock: user must tap once on the TV for audio to work
+// Audio unlock overlay
 const unlockEl = document.getElementById('audio-unlock');
 unlockEl.addEventListener('click', () => {
-  // Create audio context
   if (!actx) actx = new (window.AudioContext||window.webkitAudioContext)();
   if (actx.state==='suspended') actx.resume();
-  // Pre-load and test the music file
   warnAudio.load();
   warnAudio.play().then(() => { warnAudio.pause(); warnAudio.currentTime=0; }).catch(()=>{});
-  // Play a short test beep to confirm audio works
   beep();
-  // Hide the overlay
   unlockEl.style.display='none';
 }, {once:true});
 
 /* ── State ─────────────────────────────────────────────── */
 let sessions = [], cur = 'greeting', warnFired = false;
 
-/* ── Screen switcher ───────────────────────────────────── */
 function showScreen(name) {
   if (cur===name) return; cur=name;
   ['greeting','active','warning'].forEach(s =>
     document.getElementById(`screen-${s}`).classList.toggle('active', s===name));
   const dot=document.getElementById('sdot'), lbl=document.getElementById('slabel');
   dot.className='sdot';
-  if (name==='active')  { dot.classList.add('on');   lbl.textContent='In session'; stopWarn(); }
+  if (name==='active')       { dot.classList.add('on');   lbl.textContent='In session'; stopWarn(); }
   else if (name==='warning') { dot.classList.add('warn'); lbl.textContent='Ending soon'; }
-  else { lbl.textContent='Ready'; stopWarn(); }
+  else                       { lbl.textContent='Ready';   stopWarn(); }
 }
 
-/* ── Build greeting session list ───────────────────────── */
+/* ── Greeting list ─────────────────────────────────────── */
 function buildList() {
   const list=document.getElementById('session-list');
   const noMsg=document.getElementById('no-sess');
@@ -493,7 +459,7 @@ function buildList() {
   }
 }
 
-/* ── Main tick (every second) ──────────────────────────── */
+/* ── Main tick ─────────────────────────────────────────── */
 function tick() {
   const now=new Date();
   const active=sessions.find(s=>now>=pd(s.start)&&now<=pd(s.end));
@@ -504,7 +470,7 @@ function tick() {
   const msLeft=en-now;
   document.getElementById('b-next').textContent=`Ends: ${disp(en)}`;
 
-  if (msLeft<=C.WARN_SECS*1000) {
+  if (msLeft<=WARN_SECS*1000) {
     if (!warnFired) { warnFired=true; startWarn(); }
     showScreen('warning');
     document.getElementById('w-count').textContent=msToMS(msLeft);
@@ -519,21 +485,19 @@ function tick() {
 }
 
 /* ══════════════════════════════════════════════════════════
-   ▸ WIX API — Fetch all bookings directly, no middleware
+   ▸ FETCH sessions.json (generated by GitHub Actions)
+   ▸ Cache-bust with timestamp to always get latest version
 ══════════════════════════════════════════════════════════ */
 
-/* Merge consecutive same-name sessions */
+/* Merge consecutive same-name sessions (safety layer) */
 function cleanSessions(list) {
-  // 1. De-duplicate
   const seen = new Set();
   const unique = [];
   for (const s of list) {
     const key = `${(s.name||'').toLowerCase().trim()}|${s.start}|${s.end}`;
     if (!seen.has(key)) { seen.add(key); unique.push(s); }
   }
-  // 2. Sort
   unique.sort((a,b) => pd(a.start) - pd(b.start));
-  // 3. Merge consecutive same-name (allow up to 5 min gap)
   const merged = [];
   for (const s of unique) {
     if (merged.length > 0) {
@@ -552,88 +516,27 @@ function cleanSessions(list) {
   return merged;
 }
 
-/* Fetch one page of bookings from Wix */
-async function fetchWixPage(offset) {
-  const body = {
-    query: {
-      paging: { limit: 100, offset: offset || 0 }
-    }
-  };
-  const res = await fetch('https://www.wixapis.com/bookings/v2/bookings/query', {
-    method: 'POST',
-    headers: {
-      'Authorization': C.WIX_API_KEY,
-      'wix-site-id':   C.WIX_SITE_ID,
-      'Content-Type':  'application/json'
-    },
-    body: JSON.stringify(body)
-  });
-  if (!res.ok) throw new Error(`Wix API ${res.status}`);
-  return await res.json();
-}
-
-/* Fetch ALL bookings (handles pagination) */
-async function fetchAllBookings() {
-  let all = [];
-  let offset = 0;
-  let hasNext = true;
-
-  while (hasNext) {
-    const data = await fetchWixPage(offset);
-    const bookings = data.bookings || [];
-    all = all.concat(bookings);
-    hasNext = data.pagingMetadata?.hasNext || false;
-    offset += bookings.length;
-    // Safety: max 5 pages (500 bookings)
-    if (offset > 500) break;
-  }
-  return all;
-}
-
-/* Convert Wix bookings to our session format */
-function wixToSessions(bookings) {
-  const now = new Date();
-  const cutoff = new Date(now);
-  cutoff.setHours(0, 0, 0, 0); // Start of today
-
-  return bookings
-    // Only confirmed bookings (not CANCELED)
-    .filter(b => b.status === 'CONFIRMED' || b.status === 'CREATED')
-    // Extract start/end from bookedEntity.slot (local HK time)
-    .map(b => {
-      const slot = b.bookedEntity?.slot || {};
-      const contact = b.contactDetails || {};
-      return {
-        name:  (contact.firstName || 'Guest').trim(),
-        start: slot.startDate || '',
-        end:   slot.endDate || ''
-      };
-    })
-    // Only sessions with valid dates
-    .filter(s => s.start && s.end)
-    // Only sessions from today onwards (or ended within last hour)
-    .filter(s => pd(s.end) > new Date(+cutoff - 3600000));
-}
-
-/* Main fetch: Wix API → clean → set sessions */
 async function fetchSessions() {
   try {
-    const bookings = await fetchAllBookings();
-    const raw = wixToSessions(bookings);
+    // Cache-bust: append timestamp so browser always gets fresh data
+    const url = `./sessions.json?t=${Date.now()}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const raw = (data.sessions || [])
+      .filter(s => pd(s.end) > new Date(Date.now() - 3600000));
     sessions = cleanSessions(raw);
-    console.log(`Fetched ${bookings.length} bookings → ${sessions.length} sessions (merged)`);
+    console.log(`Loaded ${sessions.length} sessions from sessions.json`);
   } catch(e) {
-    console.warn('Wix API fetch error:', e);
-    // Keep existing sessions on error — don't wipe the display
+    console.warn('Fetch sessions.json error:', e);
   }
 }
 
-/* ── Boot ──────────────────────────────────────────────── */
 async function init() {
   await fetchSessions();
   tick();
   setInterval(tick, 1000);
-  setInterval(fetchSessions, C.POLL_MS);
+  setInterval(fetchSessions, POLL_MS);
 }
 
 init();
