@@ -88,7 +88,7 @@ jobs:
             cutoff.setTime(cutoff.getTime() - 3600000); // 1 hour before today
 
             let sessions = bookings
-              .filter(b => b.status === 'CONFIRMED' || b.status === 'CREATED')
+              .filter(b => b.status === 'CONFIRMED')
               .map(b => {
                 const slot = b.bookedEntity?.slot || {};
                 const contact = b.contactDetails || {};
@@ -103,6 +103,45 @@ jobs:
 
             // Sort by start time
             sessions.sort((a, b) => new Date(a.start) - new Date(b.start));
+
+            // ONE COURT: de-duplicate by time slot
+            // Multiple people booking the same slot = playing together
+            // Keep only one entry per unique start+end time
+            const slotSeen = new Set();
+            const uniqueSlots = [];
+            for (const s of sessions) {
+              const slotKey = `${s.start}|${s.end}`;
+              if (!slotSeen.has(slotKey)) {
+                slotSeen.add(slotKey);
+                uniqueSlots.push(s);
+              }
+            }
+
+            // ONE COURT: remove overlapping sessions
+            // Sort by duration descending so longer bookings (primary booker) are kept
+            uniqueSlots.sort((a, b) => {
+              const durA = new Date(a.end) - new Date(a.start);
+              const durB = new Date(b.end) - new Date(b.start);
+              if (durB !== durA) return durB - durA; // longer first
+              return new Date(a.start) - new Date(b.start); // then by start time
+            });
+
+            const noOverlap = [];
+            for (const s of uniqueSlots) {
+              const sStart = new Date(s.start).getTime();
+              const sEnd   = new Date(s.end).getTime();
+              const overlaps = noOverlap.some(k => {
+                const kStart = new Date(k.start).getTime();
+                const kEnd   = new Date(k.end).getTime();
+                return sStart < kEnd && sEnd > kStart;
+              });
+              if (!overlaps) {
+                noOverlap.push(s);
+              }
+            }
+            // Re-sort by start time for display
+            noOverlap.sort((a, b) => new Date(a.start) - new Date(b.start));
+            sessions = noOverlap;
 
             // Merge consecutive same-name sessions
             const merged = [];
