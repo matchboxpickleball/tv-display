@@ -3,33 +3,21 @@
 <head>
 <!--
   ╔══════════════════════════════════════════════════════════════════╗
-  ║         PICKLEBALL COURT TV  v2  — GitHub Pages Web App         ║
+  ║    MATCHBOX PICKLEBALL TV — v3 (Direct Wix API)                 ║
   ╠══════════════════════════════════════════════════════════════════╣
-  ║  UPLOAD BOTH FILES TO GITHUB REPO (same folder):                ║
-  ║    index.html       ← this file                                 ║
-  ║    background.jpg   ← the paddle photo you provided             ║
+  ║  ZERO ZAPS NEEDED — TV fetches bookings directly from Wix.     ║
+  ║  Handles: multi-hour bookings, cancellations, reschedules.     ║
+  ║  All automatic. No JSONBin. No Zapier.                          ║
   ╠══════════════════════════════════════════════════════════════════╣
-  ║  WHAT'S NEW IN V2:                                              ║
-  ║  • background.jpg used across all screens                       ║
-  ║  • Music plays ONLY at the 5-min warning                        ║
-  ║  • Countdown timer shows ONLY at the 5-min warning              ║
-  ║  • Horizontal (16:9) TV layout                                  ║
-  ║  • Greeting + active screens show customer name & 1200-1400     ║
+  ║  SETUP:                                                         ║
+  ║  1. Fill in WIX_API_KEY and WIX_SITE_ID in CONFIG below        ║
+  ║  2. Upload index.html + background.jpg + music.mp3 to GitHub   ║
+  ║  3. Enable GitHub Pages → open URL on TV → press F11           ║
   ╠══════════════════════════════════════════════════════════════════╣
-  ║  SEEDING EXISTING BOOKINGS (today → mid June):                  ║
-  ║  In JSONBin, paste your existing bookings manually once:        ║
-  ║  {                                                               ║
-  ║    "sessions": [                                                 ║
-  ║      { "start":"2026-05-07T10:00:00",                          ║
-  ║        "end":"2026-05-07T12:00:00", "name":"John D." },        ║
-  ║      { "start":"2026-05-07T14:00:00",                          ║
-  ║        "end":"2026-05-07T15:00:00", "name":"Sarah T." }        ║
-  ║      ...                                                         ║
-  ║    ]                                                             ║
-  ║  }                                                               ║
-  ║  The Zap auto-appends all NEW Wix bookings going forward.       ║
-  ╠══════════════════════════════════════════════════════════════════╣
-  ║  ZAPIER (1 Zap, 4 steps) — see code snippet at bottom of file  ║
+  ║  FILES TO UPLOAD (same folder):                                 ║
+  ║    index.html        ← this file                                ║
+  ║    background.jpg    ← the paddle photo                         ║
+  ║    music.mp3         ← 5-min warning music (optional)           ║
   ╚══════════════════════════════════════════════════════════════════╝
 -->
   <meta charset="UTF-8">
@@ -130,7 +118,6 @@
       width:100%; padding:0 60px;
       display:flex; align-items:center;
       gap:0;
-      /* offset for bars */
       margin-top:0;
     }
 
@@ -307,8 +294,8 @@
   <div class="inner">
     <div class="g-left">
       <div class="g-eyebrow">Welcome to</div>
-      <div class="g-title" id="g-title">MATCHBOX<br><span class="acc">PICKLEBALL</span></div>
-      <div class="g-tagline" id="g-tagline">Have a great game</div>
+      <div class="g-title">MATCHBOX<br><span class="acc">PICKLEBALL</span></div>
+      <div class="g-tagline">Have a great game</div>
     </div>
     <div class="g-divider"></div>
     <div class="g-right">
@@ -357,64 +344,77 @@
 <div class="bottom-bar">
   <span id="date-bar">—</span>
   <span class="hi" id="b-next">—</span>
-  <span id="b-club">Matchbox Pickleball</span>
+  <span>Matchbox Pickleball</span>
 </div>
 
 <!-- Alert audio (5-min warning only) -->
-<audio id="warn-audio" loop>
-  <source src="" type="audio/mpeg">
-  <!-- Set WARN_MUSIC_URL in CONFIG below, or leave "" for beep only -->
+<audio id="warn-audio" loop preload="auto">
+  <source src="./music.mp3" type="audio/mpeg">
 </audio>
 
+<!-- Audio unlock overlay — tap once on TV startup, then audio works forever -->
+<div id="audio-unlock" style="
+  position:fixed; inset:0; z-index:999;
+  background:rgba(0,0,0,0.92);
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  cursor:pointer;
+">
+  <div style="font-family:'Bebas Neue',sans-serif; font-size:72px; letter-spacing:6px; color:#E8531F; margin-bottom:20px;">
+    MATCHBOX PICKLEBALL
+  </div>
+  <div style="font-size:18px; color:rgba(255,255,255,0.5); letter-spacing:3px; text-transform:uppercase;">
+    Tap anywhere to start
+  </div>
+</div>
+
 <script>
-/* ══ CONFIG ════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════
+   ▸ CONFIG — fill in your Wix API key below
+══════════════════════════════════════════════════════════ */
 const C = {
-  CLUB_NAME:       "Matchbox Pickleball",
-  TAGLINE:         "Have a great game",
-  JSONBIN_BIN_ID:  "69fbf4d2adc21f119a64af0d",
-  JSONBIN_API_KEY: "$2a$10$m1dUyhPxgduHzvGQ5v4ePOgsF.m3FqTSyBgWJ.QRAStlzaJ1bEyau",
-  WARN_MUSIC_URL:  "./music.mp3", // mp3 URL, plays only at 5-min warning
-  POLL_MS:         60_000,      // re-fetch every 60 s
-  WARN_SECS:       300,         // 5 minutes
+  // Wix API — get from manage.wix.com → Settings → API Keys
+  WIX_API_KEY:  "IST.eyJraWQiOiJQb3pIX2FDMiIsImFsZyI6IlJTMjU2In0.eyJkYXRhIjoie1wiaWRcIjpcIjY4N2U0NTIyLTk0ZTYtNDU4Mi1hYWY2LTJjMjAzZjM0MDdlN1wiLFwiaWRlbnRpdHlcIjp7XCJ0eXBlXCI6XCJhcHBsaWNhdGlvblwiLFwiaWRcIjpcImI4ODg5MTQ5LTZmN2ItNDNkMi04ODljLTBkZmQ4YzczZWI1NVwifSxcInRlbmFudFwiOntcInR5cGVcIjpcImFjY291bnRcIixcImlkXCI6XCJhNDI3YzAxYi1jOTc2LTQ1ZWUtODYxOS1hYTUxNzI4Mjk4YTFcIn19IiwiaWF0IjoxNzc4MjA0MDIwfQ.K1Zrb1b9ehWgqkKf3WIZw3lguBiGM9eKPHhUaD1pDg4SIOZdvLizWHttoJMST7874BxV13gFbfoFjLqwU1flOvvaVDjqoQKU-uZ5vSl_sg2Y12X1PFZYKOeFzy_hWeLbUfVv0Js46OvHmWk-xI7b-J3epYeReJpAw8YEwSdtoYyKnpxp1HM6zB8aSeFPykM1BogF2TG3SA1-6t_9AApIfho7Bi5AXB3Iia1PRZ0Cyo9M6vuojSpbQIOjpwq84isqj0aZ0VjLFWLsmqB7lwhd6TMIfN5Ie_eCp1_Q00qi4ATJ3-PJII6LLIezpLPOfXOh6KxFK3TOY_JhIrX2QJivgg",
+  WIX_SITE_ID:  "e5638fbb-63f8-43aa-9779-f5ce6b168eb1",
+
+  WARN_MUSIC_URL: "./music.mp3",
+  POLL_MS:        60_000,   // re-fetch from Wix every 60s
+  WARN_SECS:      300,      // 5-min warning
 };
-/* ═══════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════ */
 
-/* Apply config */
-document.getElementById('b-club').textContent = C.CLUB_NAME;
-if (C.WARN_MUSIC_URL) document.querySelector('#warn-audio source').src = C.WARN_MUSIC_URL;
-
-/* Clock */
-function tick_clock() {
+/* ── Clock ─────────────────────────────────────────────── */
+function tickClock() {
   const n = new Date();
   document.getElementById('clock').textContent =
     n.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false});
   document.getElementById('date-bar').textContent =
     n.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
 }
-setInterval(tick_clock, 1000); tick_clock();
+setInterval(tickClock, 1000); tickClock();
 
-/* Helpers */
-function pd(s){
-  // Strip timezone offset (e.g. +08:00 from Wix) so times display as local court time
+/* ── Helpers ───────────────────────────────────────────── */
+function pd(s) {
+  // Strip timezone offset so times display as local court time
   const clean = (s||'').replace(/(\.\d+)?([+-]\d{2}:\d{2}|Z)$/, '');
   return new Date(clean);
 }
-function firstName(n){ return (n||'').trim().split(/\s+/)[0]; }
-function hhmm(d){ return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}).replace(':',''); }
-function disp(d){ return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}); }
-function msToMS(ms){
-  if(ms<=0) return '00:00';
+function firstName(n) { return (n||'').trim().split(/\s+/)[0]; }
+function hhmm(d) { return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}).replace(':',''); }
+function disp(d) { return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}); }
+function msToMS(ms) {
+  if (ms<=0) return '00:00';
   const s=Math.floor(ms/1000), m=Math.floor(s/60), sec=s%60;
   return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
 }
 
-/* Audio */
-let actx=null;
-const warnAudio=document.getElementById('warn-audio');
-function beep(){
-  if(!actx) actx=new(window.AudioContext||window.webkitAudioContext)();
-  if(actx.state==='suspended') actx.resume();
-  [0,700,1400].forEach(d=>{
+/* ── Audio ─────────────────────────────────────────────── */
+let actx = null;
+const warnAudio = document.getElementById('warn-audio');
+function beep() {
+  if (!actx) actx = new (window.AudioContext||window.webkitAudioContext)();
+  if (actx.state==='suspended') actx.resume();
+  [0,700,1400].forEach(d => {
     const o=actx.createOscillator(), g=actx.createGain();
     o.connect(g); g.connect(actx.destination);
     o.frequency.value=880;
@@ -424,37 +424,56 @@ function beep(){
     o.start(t); o.stop(t+0.5);
   });
 }
-function startWarn(){ beep(); if(C.WARN_MUSIC_URL) warnAudio.play().catch(()=>{}); }
-function stopWarn() { warnAudio.pause(); warnAudio.currentTime=0; }
-document.addEventListener('click',()=>{ if(!actx) actx=new(window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended') actx.resume(); },{once:true});
+function startWarn() { beep(); if (C.WARN_MUSIC_URL) { warnAudio.currentTime=0; warnAudio.play().catch(e=>console.warn('Audio play failed:',e)); } }
+function stopWarn()  { warnAudio.pause(); warnAudio.currentTime=0; }
 
-/* State */
-let sessions=[], cur='greeting', warnFired=false;
+// Audio unlock: user must tap once on the TV for audio to work
+const unlockEl = document.getElementById('audio-unlock');
+unlockEl.addEventListener('click', () => {
+  // Create audio context
+  if (!actx) actx = new (window.AudioContext||window.webkitAudioContext)();
+  if (actx.state==='suspended') actx.resume();
+  // Pre-load and test the music file
+  warnAudio.load();
+  warnAudio.play().then(() => { warnAudio.pause(); warnAudio.currentTime=0; }).catch(()=>{});
+  // Play a short test beep to confirm audio works
+  beep();
+  // Hide the overlay
+  unlockEl.style.display='none';
+}, {once:true});
 
-function showScreen(name){
-  if(cur===name) return; cur=name;
-  ['greeting','active','warning'].forEach(s=>
-    document.getElementById(`screen-${s}`).classList.toggle('active',s===name));
+/* ── State ─────────────────────────────────────────────── */
+let sessions = [], cur = 'greeting', warnFired = false;
+
+/* ── Screen switcher ───────────────────────────────────── */
+function showScreen(name) {
+  if (cur===name) return; cur=name;
+  ['greeting','active','warning'].forEach(s =>
+    document.getElementById(`screen-${s}`).classList.toggle('active', s===name));
   const dot=document.getElementById('sdot'), lbl=document.getElementById('slabel');
   dot.className='sdot';
-  if(name==='active'){ dot.classList.add('on'); lbl.textContent='In session'; stopWarn(); }
-  else if(name==='warning'){ dot.classList.add('warn'); lbl.textContent='Ending soon'; }
+  if (name==='active')  { dot.classList.add('on');   lbl.textContent='In session'; stopWarn(); }
+  else if (name==='warning') { dot.classList.add('warn'); lbl.textContent='Ending soon'; }
   else { lbl.textContent='Ready'; stopWarn(); }
 }
 
-/* Build greeting list */
-function buildList(){
+/* ── Build greeting session list ───────────────────────── */
+function buildList() {
   const list=document.getElementById('session-list');
   const noMsg=document.getElementById('no-sess');
   const now=new Date();
-  const today=sessions.filter(s=>{
+  const today=sessions.filter(s => {
     const st=pd(s.start), en=pd(s.end);
     return st.toDateString()===now.toDateString() && en>new Date(+now-3600000);
   });
   list.querySelectorAll('.srow').forEach(e=>e.remove());
-  if(!today.length){ noMsg.style.display='block'; document.getElementById('b-next').textContent='No more sessions today'; return; }
+  if (!today.length) {
+    noMsg.style.display='block';
+    document.getElementById('b-next').textContent='No more sessions today';
+    return;
+  }
   noMsg.style.display='none';
-  today.slice(0,4).forEach(s=>{
+  today.slice(0,4).forEach(s => {
     const st=pd(s.start), en=pd(s.end);
     const isNow=now>=st&&now<=en, isPast=now>en;
     const row=document.createElement('div');
@@ -466,7 +485,7 @@ function buildList(){
     list.appendChild(row);
   });
   const nxt=today.find(s=>pd(s.end)>now);
-  if(nxt){
+  if (nxt) {
     const st=pd(nxt.start), en=pd(nxt.end), isNow=now>=st&&now<=en;
     document.getElementById('b-next').textContent=isNow
       ?`Ongoing · ends ${disp(en)}`
@@ -474,19 +493,19 @@ function buildList(){
   }
 }
 
-/* Main tick (every second) */
-function tick(){
+/* ── Main tick (every second) ──────────────────────────── */
+function tick() {
   const now=new Date();
   const active=sessions.find(s=>now>=pd(s.start)&&now<=pd(s.end));
-  if(!active){
+  if (!active) {
     warnFired=false; showScreen('greeting'); buildList(); return;
   }
   const st=pd(active.start), en=pd(active.end);
   const msLeft=en-now;
   document.getElementById('b-next').textContent=`Ends: ${disp(en)}`;
 
-  if(msLeft<=C.WARN_SECS*1000){
-    if(!warnFired){ warnFired=true; startWarn(); }
+  if (msLeft<=C.WARN_SECS*1000) {
+    if (!warnFired) { warnFired=true; startWarn(); }
     showScreen('warning');
     document.getElementById('w-count').textContent=msToMS(msLeft);
     document.getElementById('w-end').textContent=`Session ends at ${disp(en)}`;
@@ -499,79 +518,125 @@ function tick(){
   }
 }
 
-/* Merge consecutive same-name sessions — fixes race condition from simultaneous Wix bookings */
-function mergeConsecutive(list){
-  const merged=[];
-  for(const s of list){
-    if(merged.length>0){
-      const last=merged[merged.length-1];
-      const sameName=last.name.toLowerCase()===s.name.toLowerCase();
-      const sameDay=pd(last.start).toDateString()===pd(s.start).toDateString();
-      const contiguous=pd(last.end).getTime()===pd(s.start).getTime();
-      if(sameName&&sameDay&&contiguous){ last.end=s.end; continue; }
+/* ══════════════════════════════════════════════════════════
+   ▸ WIX API — Fetch all bookings directly, no middleware
+══════════════════════════════════════════════════════════ */
+
+/* Merge consecutive same-name sessions */
+function cleanSessions(list) {
+  // 1. De-duplicate
+  const seen = new Set();
+  const unique = [];
+  for (const s of list) {
+    const key = `${(s.name||'').toLowerCase().trim()}|${s.start}|${s.end}`;
+    if (!seen.has(key)) { seen.add(key); unique.push(s); }
+  }
+  // 2. Sort
+  unique.sort((a,b) => pd(a.start) - pd(b.start));
+  // 3. Merge consecutive same-name (allow up to 5 min gap)
+  const merged = [];
+  for (const s of unique) {
+    if (merged.length > 0) {
+      const last = merged[merged.length-1];
+      const sameName = (last.name||'').toLowerCase().trim() === (s.name||'').toLowerCase().trim();
+      const sameDay  = pd(last.start).toDateString() === pd(s.start).toDateString();
+      const gap = pd(s.start).getTime() - pd(last.end).getTime();
+      const contiguous = gap >= -60000 && gap <= 300000;
+      if (sameName && sameDay && contiguous) {
+        if (pd(s.end).getTime() > pd(last.end).getTime()) last.end = s.end;
+        continue;
+      }
     }
-    merged.push({name:s.name,start:s.start,end:s.end});
+    merged.push({name:s.name, start:s.start, end:s.end});
   }
   return merged;
 }
 
-/* Fetch JSONBin */
-async function fetchSessions(){
-  if(!C.JSONBIN_BIN_ID||C.JSONBIN_BIN_ID==='YOUR_BIN_ID_HERE'){
-    const now=Date.now();
-    sessions=[{start:new Date(now-20*60000).toISOString(),end:new Date(now+43*60000).toISOString(),name:'Alex Chen'},
-              {start:new Date(now+80*60000).toISOString(),end:new Date(now+140*60000).toISOString(),name:'Sam Rivera'}];
-    return;
-  }
-  try{
-    const r=await fetch(`https://api.jsonbin.io/v3/b/${C.JSONBIN_BIN_ID}/latest`,
-      {headers:{'X-Master-Key':C.JSONBIN_API_KEY}});
-    const d=await r.json();
-    const raw=(d?.record?.sessions||[])
-      .filter(s=>pd(s.end)>new Date(Date.now()-7200000))
-      .sort((a,b)=>pd(a.start)-pd(b.start));
-    sessions=mergeConsecutive(raw);
-  }catch(e){console.warn('JSONBin:',e);}
+/* Fetch one page of bookings from Wix */
+async function fetchWixPage(offset) {
+  const body = {
+    query: {
+      paging: { limit: 100, offset: offset || 0 }
+    }
+  };
+  const res = await fetch('https://www.wixapis.com/bookings/v2/bookings/query', {
+    method: 'POST',
+    headers: {
+      'Authorization': C.WIX_API_KEY,
+      'wix-site-id':   C.WIX_SITE_ID,
+      'Content-Type':  'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error(`Wix API ${res.status}`);
+  return await res.json();
 }
 
-async function init(){ await fetchSessions(); tick(); setInterval(tick,1000); setInterval(fetchSessions,C.POLL_MS); }
+/* Fetch ALL bookings (handles pagination) */
+async function fetchAllBookings() {
+  let all = [];
+  let offset = 0;
+  let hasNext = true;
+
+  while (hasNext) {
+    const data = await fetchWixPage(offset);
+    const bookings = data.bookings || [];
+    all = all.concat(bookings);
+    hasNext = data.pagingMetadata?.hasNext || false;
+    offset += bookings.length;
+    // Safety: max 5 pages (500 bookings)
+    if (offset > 500) break;
+  }
+  return all;
+}
+
+/* Convert Wix bookings to our session format */
+function wixToSessions(bookings) {
+  const now = new Date();
+  const cutoff = new Date(now);
+  cutoff.setHours(0, 0, 0, 0); // Start of today
+
+  return bookings
+    // Only confirmed bookings (not CANCELED)
+    .filter(b => b.status === 'CONFIRMED' || b.status === 'CREATED')
+    // Extract start/end from bookedEntity.slot (local HK time)
+    .map(b => {
+      const slot = b.bookedEntity?.slot || {};
+      const contact = b.contactDetails || {};
+      return {
+        name:  (contact.firstName || 'Guest').trim(),
+        start: slot.startDate || '',
+        end:   slot.endDate || ''
+      };
+    })
+    // Only sessions with valid dates
+    .filter(s => s.start && s.end)
+    // Only sessions from today onwards (or ended within last hour)
+    .filter(s => pd(s.end) > new Date(+cutoff - 3600000));
+}
+
+/* Main fetch: Wix API → clean → set sessions */
+async function fetchSessions() {
+  try {
+    const bookings = await fetchAllBookings();
+    const raw = wixToSessions(bookings);
+    sessions = cleanSessions(raw);
+    console.log(`Fetched ${bookings.length} bookings → ${sessions.length} sessions (merged)`);
+  } catch(e) {
+    console.warn('Wix API fetch error:', e);
+    // Keep existing sessions on error — don't wipe the display
+  }
+}
+
+/* ── Boot ──────────────────────────────────────────────── */
+async function init() {
+  await fetchSessions();
+  tick();
+  setInterval(tick, 1000);
+  setInterval(fetchSessions, C.POLL_MS);
+}
+
 init();
 </script>
-
-<!--
-═══════════════════════════════════════════════════════════
-  ZAPIER — Step 3 Code (paste into "Code by Zapier"):
-
-  Map these input variables:
-    inputData.rawBin       ← body text from GET step
-    inputData.startTime    ← booking start (ISO) from Wix
-    inputData.endTime      ← booking end (ISO) from Wix
-    inputData.customer     ← customer full name from Wix
-
-  Code:
-  ───────────────────────────────────────────────────────
-  const parsed = JSON.parse(inputData.rawBin || '{}');
-  const sessions = parsed.record?.sessions || parsed.sessions || [];
-
-  sessions.push({
-    start: inputData.startTime,
-    end:   inputData.endTime,
-    name:  inputData.customer
-  });
-
-  // Clean up sessions older than 2 hours
-  const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-  const cleaned = sessions.filter(s => s.end > cutoff);
-
-  output = [{ body: JSON.stringify({ sessions: cleaned }) }];
-  ───────────────────────────────────────────────────────
-  Step 4 — Webhooks PUT:
-    URL:           https://api.jsonbin.io/v3/b/YOUR_BIN_ID
-    Payload type:  Raw
-    Body:          use "body" from step 3
-    Headers:       X-Master-Key → your key
-                   Content-Type → application/json
-═══════════════════════════════════════════════════════════
--->
 </body>
 </html>
