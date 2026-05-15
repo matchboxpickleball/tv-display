@@ -309,7 +309,7 @@
   <div class="inner">
     <div class="w-left">
       <div class="w-badge">⚠ Time check</div>
-      <div class="w-title">Session ending<br>in 5 minutes</div>
+      <div class="w-title">Session ending<br>in 3 minutes</div>
       <div class="w-info" id="w-info">Please wrap up</div>
       <div class="w-music">
         <span class="mlabel">Alert playing</span>
@@ -319,7 +319,7 @@
     <div class="w-divider"></div>
     <div class="w-right">
       <div class="w-right-lbl">Time remaining</div>
-      <div class="w-count" id="w-count">05:00</div>
+      <div class="w-count" id="w-count">03:00</div>
       <div class="w-end" id="w-end">Session ends at —</div>
     </div>
   </div>
@@ -352,8 +352,9 @@
 </div>
 
 <script>
-const POLL_MS   = 60_000;
-const WARN_SECS = 300;
+const POLL_MS    = 60_000;
+const WARN_SECS  = 180;   // show warning screen at 3 min
+const SOUND_SECS = 60;    // play sound/music at 1 min
 
 /* ── Clock ─────────────────────────────────────────────── */
 function tickClock() {
@@ -413,7 +414,7 @@ unlockEl.addEventListener('click', () => {
 }, {once:true});
 
 /* ── State ─────────────────────────────────────────────── */
-let sessions = [], cur = 'greeting', warnFired = false;
+let sessions = [], cur = 'greeting', warnFired = false, soundFired = false;
 
 function showScreen(name) {
   if (cur===name) return; cur=name;
@@ -467,21 +468,29 @@ function tick() {
   const now=new Date();
   const active=sessions.find(s=>now>=pd(s.start)&&now<=pd(s.end));
   if (!active) {
-    warnFired=false; showScreen('greeting'); buildList(); return;
+    warnFired=false; soundFired=false; showScreen('greeting'); buildList(); return;
   }
   const st=pd(active.start), en=pd(active.end);
   const msLeft=en-now;
   document.getElementById('b-next').textContent=`Ends: ${disp(en)}`;
 
   if (msLeft<=WARN_SECS*1000) {
-    if (!warnFired) { warnFired=true; startWarn(); }
+    if (!warnFired) { warnFired=true; }
     showScreen('warning');
+    // Sound & music only fires at 1 minute remaining
+    if (msLeft<=SOUND_SECS*1000) {
+      if (!soundFired) { soundFired=true; startWarn(); }
+      document.getElementById('w-music').style.display='flex';
+    } else {
+      document.getElementById('w-music').style.display='none';
+    }
     document.getElementById('w-count').textContent=msToMS(msLeft);
     document.getElementById('w-end').textContent=`Session ends at ${disp(en)}`;
     document.getElementById('w-info').innerHTML=
-      (active.name?`<strong>${firstName(active.name)}</strong> · `:'')+'See you next time';
+      (active.name?`<strong>${firstName(active.name)}</strong> · `:'') +
+      'Please kindly turn off air con &amp; lights when leaving';
   } else {
-    warnFired=false; showScreen('active');
+    warnFired=false; soundFired=false; showScreen('active');
     document.getElementById('a-name').textContent=`WELCOME ${firstName(active.name)||''}`.trim();
     document.getElementById('a-time').textContent=`${hhmm(st)} – ${hhmm(en)}`;
   }
