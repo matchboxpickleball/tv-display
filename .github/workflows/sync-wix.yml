@@ -27,12 +27,16 @@ jobs:
 
           function fetchPage(cursor) {
             return new Promise((resolve, reject) => {
-              // Wix Bookings v2 uses cursor-based paging (not offset)
-              const pagingObj = cursor
-                ? { cursorPaging: { limit: 100, cursor } }
-                : { cursorPaging: { limit: 100 } };
+              // Wix Bookings v2 query body — includes an explicit
+              // empty `filter` because Wix appears to require it.
+              const queryObj = {
+                filter: {},
+                cursorPaging: cursor
+                  ? { limit: 100, cursor }
+                  : { limit: 100 }
+              };
 
-              const body = JSON.stringify({ query: pagingObj });
+              const body = JSON.stringify({ query: queryObj });
               const options = {
                 hostname: 'www.wixapis.com',
                 path: '/bookings/v2/bookings/query',
