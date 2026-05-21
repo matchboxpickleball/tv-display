@@ -32,12 +32,13 @@ jobs:
               // documented endpoint and started returning generic 500s
               // (empty `details`) in May 2026 as Wix tightened the
               // V1 -> V2 cutover. This is the supported replacement.
-              const queryObj = {
-                filter: {},
-                cursorPaging: cursor
-                  ? { limit: 100, cursor }
-                  : { limit: 100 }
-              };
+              // Wix V2 rule: when paging with a cursor, the body must
+              // contain ONLY cursorPaging — no filter, no sort. Otherwise
+              // you get 400 "Invalid cursor. Sort or filter can not be
+              // specified together with cursor".
+              const queryObj = cursor
+                ? { cursorPaging: { limit: 100, cursor } }
+                : { filter: {}, cursorPaging: { limit: 100 } };
 
               const body = JSON.stringify({
                 query: queryObj,
