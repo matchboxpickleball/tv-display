@@ -27,8 +27,11 @@ jobs:
 
           function fetchPage(cursor) {
             return new Promise((resolve, reject) => {
-              // Wix Bookings v2 query body — includes an explicit
-              // empty `filter` because Wix appears to require it.
+              // Bookings Reader V2 "Query Extended Bookings".
+              // The older /bookings/v2/bookings/query path is not a
+              // documented endpoint and started returning generic 500s
+              // (empty `details`) in May 2026 as Wix tightened the
+              // V1 -> V2 cutover. This is the supported replacement.
               const queryObj = {
                 filter: {},
                 cursorPaging: cursor
@@ -36,15 +39,20 @@ jobs:
                   : { limit: 100 }
               };
 
-              const body = JSON.stringify({ query: queryObj });
+              const body = JSON.stringify({
+                query: queryObj,
+                withBookingAllowedActions: false,
+                withBookingAttendanceInfo: false
+              });
               const options = {
                 hostname: 'www.wixapis.com',
-                path: '/bookings/v2/bookings/query',
+                path: '/_api/bookings-reader/v2/extended-bookings/query',
                 method: 'POST',
                 headers: {
                   'Authorization': WIX_API_KEY,
                   'wix-site-id': WIX_SITE_ID,
                   'Content-Type': 'application/json',
+                  'Accept': 'application/json',
                   'Content-Length': Buffer.byteLength(body)
                 }
               };
@@ -73,7 +81,12 @@ jobs:
             let pages = 0;
             while (pages < 20) {
               const data = await fetchPage(cursor);
-              const bookings = data.bookings || [];
+              // Bookings Reader V2 returns `extendedBookings`, each wrapping
+              // a `.booking` object that has the same shape we used before.
+              const extended = data.extendedBookings || [];
+              const bookings = extended
+                .map(eb => (eb && eb.booking) ? eb.booking : eb)
+                .filter(Boolean);
               all = all.concat(bookings);
               console.log(`Page ${pages + 1}: ${bookings.length} bookings (total: ${all.length})`);
               cursor = data.pagingMetadata?.cursors?.next || null;
